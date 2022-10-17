@@ -1,9 +1,12 @@
+/* eslint-disable react-native/no-inline-styles */
 /* eslint-disable react-hooks/exhaustive-deps */
-import React, {useEffect, useRef} from 'react';
+import React, {useEffect, useRef, useMemo} from 'react';
 import data from './data/texts.json';
 import CustomButton from './Components/CustomButton.js';
 import Timer from './Components/Timer.js';
 import Winner from './Components/Winner.js';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import MyBestScore from './Components/MyBestScore';
 import {
   Pressable,
   SafeAreaView,
@@ -24,6 +27,25 @@ import {
 import {Header} from './Components/Header';
 
 const App = () => {
+  const saveBestScore = async value => {
+    try {
+      await AsyncStorage.setItem('bestScore', toString(value));
+    } catch (e) {
+      console.log(e);
+    }
+  };
+
+  const getBestScore = async () => {
+    try {
+      const value = await AsyncStorage.getItem('bestScore');
+      if (value !== null) {
+        console.log(value);
+      }
+    } catch (e) {
+      console.log(e);
+    }
+  };
+
   const getCurrentTime = () => {
     const d = new Date();
     return d.getHours() * 24 * 3600 + d.getSeconds() + d.getMinutes() * 60;
@@ -32,23 +54,26 @@ const App = () => {
   const ALL_DATA = data.data.map(x => x.txt);
 
   const [randomTxt, setRandomTxt] = React.useState(
-    ALL_DATA[Math.floor(Math.random() * (20 - 0) + 0)],
+    ALL_DATA[Math.floor(Math.random() * (ALL_DATA.length - 0) + 0)],
   );
-
   const [userInput, setUserInput] = React.useState('');
   const [getSeconds, setGetSeconds] = React.useState('');
+  const [bestScore, setBestScore] = React.useState(parseInt(getBestScore()));
+  const [currentScore, setCurrentScore] = React.useState(0);
+  let tempLetterCounter = 0;
 
   useEffect(() => {
-    setRandomTxt(ALL_DATA[Math.floor(Math.random() * (20 - 0) + 0)]);
+    setRandomTxt(
+      ALL_DATA[Math.floor(Math.random() * (ALL_DATA.length - 0) + 0)],
+    );
     setGetSeconds(getCurrentTime());
-    console.log(getSeconds);
+    setBestScore(parseInt(getBestScore()));
   }, []);
 
   const generateTextColor = [];
-  let tempLetterCounter = 0;
+
   [...userInput].forEach((ch, index) => {
     if (ch === randomTxt[index]) {
-      console.log(index, 'equal');
       generateTextColor.push(
         <Text key={index} style={styles.charEqual}>
           {ch}
@@ -56,7 +81,6 @@ const App = () => {
       );
       tempLetterCounter++;
     } else {
-      console.log(index, 'not equal');
       generateTextColor.push(
         <Text key={index} style={styles.charNotEqual}>
           {ch}
@@ -64,6 +88,10 @@ const App = () => {
       );
     }
   });
+
+  const memoizedScore = useMemo(() =>
+    parseInt((tempLetterCounter * 60) / (getCurrentTime() - getSeconds) / 5),
+  );
 
   const setText = x => {
     if (x.length <= randomTxt.length) {
@@ -75,13 +103,31 @@ const App = () => {
     setUserInput('');
     setGetSeconds(getCurrentTime());
     setRandomTxt(ALL_DATA[Math.floor(Math.random() * (20 - 0) + 0)]);
+    console.log('memoized score', memoizedScore, bestScore);
+    if (
+      bestScore != NaN &&
+      bestScore != undefined &&
+      memoizedScore > bestScore
+    ) {
+      saveBestScore(memoizedScore);
+      setBestScore(memoizedScore);
+    } else {
+      saveBestScore(memoizedScore);
+      setBestScore(memoizedScore);
+    }
   };
 
-  const allData = <Text>{randomTxt}</Text>;
+  const allData = (
+    <Text style={{color: COLOR_PRIMARY, fontWeight: 'bold', fontSize: 15}}>
+      {randomTxt}
+    </Text>
+  );
   const scrollViewRef = useRef();
 
   const checkWinner = () => {
-    return randomTxt.length === tempLetterCounter;
+    if (randomTxt.length === tempLetterCounter) {
+      return true;
+    }
   };
 
   return (
@@ -90,9 +136,9 @@ const App = () => {
 
       <View
         style={{
-          minHeight: '40%',
-          maxHeight: '40%',
-          maxWidth: '90%',
+          minHeight: '50%',
+          maxHeight: '50%',
+          maxWidth: '95%',
           minWidth: '90%',
           marginLeft: 'auto',
           marginRight: 'auto',
@@ -100,7 +146,9 @@ const App = () => {
         }}>
         {allData}
         <TextInput
-          multiline={true}
+          caretHidden={true}
+          style={styles.textInput}
+          multiline={false}
           onChangeText={newTxt => setText(newTxt)}
           placeholder="type here"
           value={userInput}
@@ -117,13 +165,15 @@ const App = () => {
           </ScrollView>
         </View>
       </View>
-
+      <MyBestScore myScore={bestScore} />
       {checkWinner() && <Winner />}
       <Timer
         letterCounter={tempLetterCounter}
         time={getCurrentTime() - getSeconds}
       />
       <CustomButton name="Reset" handleReset={handleReset} />
+      <CustomButton name="testStoreData" handleReset={saveBestScore} />
+      <CustomButton name="testFetchData" handleReset={getBestScore} />
     </SafeAreaView>
   );
 };
@@ -144,12 +194,15 @@ const styles = StyleSheet.create({
     width: '80%',
     minWidth: '80%',
     maxWidth: '80%',
+    fontWeight: 'bold',
+    color: COLOR_BACKGROUND,
   },
   charEqual: {
     color: COLOR_GREEN,
   },
   charNotEqual: {
     color: COLOR_RED,
+    fontWeight: 'bold',
   },
 });
 

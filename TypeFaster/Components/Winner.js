@@ -12,8 +12,9 @@ const Winner = () => {
 
 const styles = StyleSheet.create({
   winner: {
-    fontSize: 30,
+    fontSize: 25,
     color: COLOR_PRIMARY,
+    fontWeight: 'bold',
   },
 });
 

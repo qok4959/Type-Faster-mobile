@@ -10,7 +10,7 @@ const Timer = props => {
       <Text>{props.letterCounter}</Text>
       <Text>
         {props.time != 0 &&
-          parseInt((props.letterCounter * 60) / props.time / 5)}{' '}
+          parseInt((props.letterCounter * 60) / props.time / 5, 10)}
         words per minute
       </Text>
     </>
