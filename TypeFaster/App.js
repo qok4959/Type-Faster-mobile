@@ -8,14 +8,11 @@ import Winner from './Components/Winner.js';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import MyBestScore from './Components/MyBestScore';
 import {
-  Pressable,
   SafeAreaView,
   ScrollView,
-  StatusBar,
   StyleSheet,
   Text,
   TextInput,
-  useColorScheme,
   View,
 } from 'react-native';
 import {
@@ -27,9 +24,23 @@ import {
 import {Header} from './Components/Header';
 
 const App = () => {
+  const ALL_DATA = data.data.map(x => x.txt);
+  let memoizedScore;
+
+  //states
+  const [randomTxt, setRandomTxt] = React.useState(
+    ALL_DATA[Math.floor(Math.random() * (ALL_DATA.length - 0) + 0)],
+  );
+  const [userInput, setUserInput] = React.useState('');
+  const [getSeconds, setGetSeconds] = React.useState('');
+  const [bestScore, setBestScore] = React.useState(0);
+  let tempLetterCounter = 0;
+
+  //functions
   const saveBestScore = async value => {
     try {
-      await AsyncStorage.setItem('bestScore', toString(value));
+      console.log('saving best score', value.toString());
+      await AsyncStorage.setItem('bestScore', value.toString());
     } catch (e) {
       console.log(e);
     }
@@ -39,7 +50,18 @@ const App = () => {
     try {
       const value = await AsyncStorage.getItem('bestScore');
       if (value !== null) {
-        console.log(value);
+        return Promise.resolve(value);
+      }
+    } catch (e) {
+      console.log(e);
+    }
+  };
+
+  const asyncTest = async () => {
+    try {
+      const value = await AsyncStorage.getItem('bestScore');
+      if (value !== null) {
+        return value;
       }
     } catch (e) {
       console.log(e);
@@ -51,23 +73,20 @@ const App = () => {
     return d.getHours() * 24 * 3600 + d.getSeconds() + d.getMinutes() * 60;
   };
 
-  const ALL_DATA = data.data.map(x => x.txt);
-
-  const [randomTxt, setRandomTxt] = React.useState(
-    ALL_DATA[Math.floor(Math.random() * (ALL_DATA.length - 0) + 0)],
-  );
-  const [userInput, setUserInput] = React.useState('');
-  const [getSeconds, setGetSeconds] = React.useState('');
-  const [bestScore, setBestScore] = React.useState(parseInt(getBestScore()));
-  const [currentScore, setCurrentScore] = React.useState(0);
-  let tempLetterCounter = 0;
-
   useEffect(() => {
     setRandomTxt(
       ALL_DATA[Math.floor(Math.random() * (ALL_DATA.length - 0) + 0)],
     );
     setGetSeconds(getCurrentTime());
-    setBestScore(parseInt(getBestScore()));
+
+    const tempScore = async () => {
+      let output = await getBestScore();
+      return output;
+    };
+    tempScore().then(x => {
+      memoizedScore = x;
+      setBestScore(x);
+    });
   }, []);
 
   const generateTextColor = [];
@@ -89,8 +108,11 @@ const App = () => {
     }
   });
 
-  const memoizedScore = useMemo(() =>
-    parseInt((tempLetterCounter * 60) / (getCurrentTime() - getSeconds) / 5),
+  memoizedScore = useMemo(() =>
+    parseInt(
+      (tempLetterCounter * 60) / (getCurrentTime() - getSeconds) / 5,
+      10,
+    ),
   );
 
   const setText = x => {
@@ -99,19 +121,20 @@ const App = () => {
     }
   };
 
-  const handleReset = () => {
+  const handleReset = async () => {
     setUserInput('');
     setGetSeconds(getCurrentTime());
     setRandomTxt(ALL_DATA[Math.floor(Math.random() * (20 - 0) + 0)]);
+    memoizedScore = isNaN(memoizedScore) ? 0 : memoizedScore;
     console.log('memoized score', memoizedScore, bestScore);
-    if (
-      bestScore != NaN &&
-      bestScore != undefined &&
-      memoizedScore > bestScore
-    ) {
+
+    let test = await getBestScore();
+    console.log('bestScorando', test);
+    if (isNaN(bestScore)) {
       saveBestScore(memoizedScore);
       setBestScore(memoizedScore);
-    } else {
+    }
+    if (memoizedScore > bestScore) {
       saveBestScore(memoizedScore);
       setBestScore(memoizedScore);
     }
@@ -136,7 +159,7 @@ const App = () => {
 
       <View
         style={{
-          minHeight: '50%',
+          minHeight: '40%',
           maxHeight: '50%',
           maxWidth: '95%',
           minWidth: '90%',
@@ -165,15 +188,16 @@ const App = () => {
           </ScrollView>
         </View>
       </View>
-      <MyBestScore myScore={bestScore} />
-      {checkWinner() && <Winner />}
-      <Timer
-        letterCounter={tempLetterCounter}
-        time={getCurrentTime() - getSeconds}
-      />
+      <View style={{minHeight: '25%', alignItems: 'center'}}>
+        <MyBestScore myScore={bestScore} />
+        {checkWinner() && <Winner currentScore={memoizedScore} />}
+        <Timer
+          letterCounter={tempLetterCounter}
+          time={getCurrentTime() - getSeconds}
+        />
+      </View>
+
       <CustomButton name="Reset" handleReset={handleReset} />
-      <CustomButton name="testStoreData" handleReset={saveBestScore} />
-      <CustomButton name="testFetchData" handleReset={getBestScore} />
     </SafeAreaView>
   );
 };
