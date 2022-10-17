@@ -57,17 +57,6 @@ const App = () => {
     }
   };
 
-  const asyncTest = async () => {
-    try {
-      const value = await AsyncStorage.getItem('bestScore');
-      if (value !== null) {
-        return value;
-      }
-    } catch (e) {
-      console.log(e);
-    }
-  };
-
   const getCurrentTime = () => {
     const d = new Date();
     return d.getHours() * 24 * 3600 + d.getSeconds() + d.getMinutes() * 60;
@@ -183,7 +172,7 @@ const App = () => {
               scrollViewRef.current.scrollToEnd({animated: true})
             }
             horizontal={true}
-            style={{width: '80%', maxHeight: '30%'}}>
+            style={{width: '80%', maxHeight: '40%'}}>
             <View style={styles.container}>{generateTextColor}</View>
           </ScrollView>
         </View>
